@@ -33,7 +33,7 @@ COPY run.sh /usr/local/bin/run.sh
 
 RUN chmod +x /usr/local/bin/run.sh
 
-EXPOSE 8888
+EXPOSE 8999
 
 LABEL maintainer="Wonderfall <wonderfall@targaryen.house>"
 
