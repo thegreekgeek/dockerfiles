@@ -1,66 +1,43 @@
-FROM mhart/alpine-node-auto:6
+FROM alpine:3.6
 
-ARG GHOST_VERSION=0.11.4
+ARG VERSION=1.14.0
 
 ENV GHOST_NODE_VERSION_CHECK=false \
-    GID=991 \
-    UID=991 \
-    DOMAIN=my-ghost-blog.com \
-    SSL=False \
-    SYNTAX_HIGHLIGHTING=False \
-    HIGHLIGHTER_COLOR=light \
-    CUSTOM_SMTP=False \
-    SMTP_HOST=mail.domain.tld \
-    SMTP_PASS=123456 \
-    SMTP_USER=user \
-    SMTP_PORT=587 \
-    SMTP_SENDER_MAIL=user@domain.tld \
-    SMTP_SENDER_NAME=Ghost \
+    NODE_ENV=production \
+    GID=991 UID=991 \
+    ADDRESS=https://my-ghost-blog.com \
     ENABLE_ISSO=False \
     ISSO_HOST=isso.domain.tld \
     ISSO_AVATAR=false \
-    ISSO_VOTE=false \
-    ENABLE_DISQUS=False \
-    DISQUS_SHORTNAME=shortname
+    ISSO_VOTE=false
 
-VOLUME /ghost/content
+WORKDIR /ghost
 
-RUN echo "@commuedge https://nl.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
- && apk -U add \
-    openssl \
-    ca-certificates \
+RUN apk -U --no-cache add \
     bash \
+    ca-certificates \
     grep \
-    tini@commuedge \
+    libressl \
+    nodejs-current \
+    nodejs-current-npm \
+    s6 \
     su-exec \
- && wget -q https://github.com/TryGhost/Ghost/releases/download/${GHOST_VERSION}/Ghost-${GHOST_VERSION}.zip -P /tmp \
- && unzip -q /tmp/Ghost-${GHOST_VERSION}.zip -d /ghost \
- && cd /ghost \
+    vim \
+ && wget -q https://github.com/TryGhost/Ghost/releases/download/${VERSION}/Ghost-${VERSION}.zip -P /tmp \
+ && unzip -q /tmp/Ghost-${VERSION}.zip -d /ghost \
  && npm install --production \
- && mv content/themes/casper casper \
- && mv config.example.js config.js \
- && sed -i 's/127.0.0.1/0.0.0.0/g' config.js \
- && npm cache clean \
- && apk del ca-certificates openssl \
- && rm -rf /tmp/* /var/cache/apk/*
+ && mv content/themes/casper casper
 
-COPY run.sh /usr/local/bin/run.sh
-COPY smtp.conf /usr/local/etc/smtp.conf
-COPY isso.conf /usr/local/etc/isso.conf
-COPY disqus.conf /usr/local/etc/disqus.conf
-COPY prism_light.js /ghost/prismjs/light/prism.js
-COPY prism_light.css /ghost/prismjs/light/prism.css
-COPY prism_dark.js /ghost/prismjs/dark/prism.js
-COPY prism_dark.css /ghost/prismjs/dark/prism.css
-COPY prism.js.conf /usr/local/etc/prism.js.conf
-COPY prism.css.conf /usr/local/etc/prism.css.conf
+COPY rootfs /
 
-RUN chmod +x /usr/local/bin/run.sh
+RUN chmod +x /usr/local/bin/* /etc/s6.d/*/* /etc/s6.d/.s6-svscan/*
 
 EXPOSE 2368
 
-LABEL description="Ghost CMS ready for production" \
-      ghost="Ghost v$VERSION" \
+VOLUME /ghost/content
+
+LABEL description="Ghost CMS ${VERSION}" \
       maintainer="Wonderfall <wonderfall@targaryen.house>"
 
-CMD ["run.sh"]
+ENTRYPOINT ["run.sh"]
+CMD ["/bin/s6-svscan", "/etc/s6.d"]
